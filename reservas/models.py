@@ -181,7 +181,18 @@ class Reserva(models.Model):
             reserva_id=self.id
         )
         if erros:
-            raise ValidationError(erros)
+            # Mapeia os erros apenas para campos reais do model para o Django Admin
+            # renderizar a caixa de erro amigável na interface sem estourar ValueError
+            campos_validos = {f.name for f in self._meta.fields}
+            erros_model = {}
+            for campo, msg in erros.items():
+                if campo in campos_validos:
+                    erros_model[campo] = msg
+                elif campo == 'conflito':
+                    erros_model['veiculo'] = msg
+                else:
+                    erros_model['__all__'] = msg
+            raise ValidationError(erros_model)
 
     def save(self, *args, **kwargs):
         """
