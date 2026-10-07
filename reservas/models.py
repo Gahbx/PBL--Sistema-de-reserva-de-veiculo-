@@ -70,6 +70,13 @@ class Veiculo(models.Model):
     def __str__(self):
         return f"{self.codigo} - {self.modelo} ({self.get_categoria_display()} - {self.capacidade} lug.)"
 
+    def clean(self):
+        super().clean()
+        if self.categoria == CategoriaVeiculo.LEVE and self.capacidade and self.capacidade > 4:
+            raise ValidationError({'capacidade': "Veículos da categoria LEVE comportam no máximo 4 passageiros."})
+        elif self.categoria == CategoriaVeiculo.COLETIVO and self.capacidade and self.capacidade > 18:
+            raise ValidationError({'capacidade': "Veículos da categoria COLETIVO comportam no máximo 18 passageiros."})
+
 
 class StatusReserva(models.TextChoices):
     """
@@ -160,7 +167,15 @@ class Reserva(models.Model):
         ordering = ['-data', 'horario_saida']
 
     def __str__(self):
-        return f"Reserva #{self.id or 'Nova'} - {self.veiculo.codigo} em {self.data.strftime('%d/%m/%Y')} ({self.horario_saida.strftime('%H:%M')} às {self.horario_retorno.strftime('%H:%M')}) - {self.solicitante}"
+        try:
+            codigo = self.veiculo.codigo if self.veiculo else "Sem veículo"
+        except Exception:
+            codigo = "Sem veículo"
+        data_str = self.data.strftime('%d/%m/%Y') if self.data else "Data pendente"
+        saida_str = self.horario_saida.strftime('%H:%M') if self.horario_saida else "--:--"
+        retorno_str = self.horario_retorno.strftime('%H:%M') if self.horario_retorno else "--:--"
+        solicitante_str = self.solicitante or "Pendente"
+        return f"Reserva #{self.id or 'Nova'} - {codigo} em {data_str} ({saida_str} às {retorno_str}) - {solicitante_str}"
 
     def clean(self):
         """
