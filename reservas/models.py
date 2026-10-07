@@ -172,12 +172,17 @@ class Reserva(models.Model):
         5. Conflito / sobreposição de horários com reservas ativas existentes para o mesmo veículo na mesma data.
         """
         from .services import validar_regras_reserva
+        try:
+            veiculo = self.veiculo
+        except Exception:
+            veiculo = None
+
         erros = validar_regras_reserva(
-            veiculo=self.veiculo,
-            data=self.data,
-            horario_saida=self.horario_saida,
-            horario_retorno=self.horario_retorno,
-            quantidade_passageiros=self.quantidade_passageiros,
+            veiculo=veiculo,
+            data=getattr(self, 'data', None),
+            horario_saida=getattr(self, 'horario_saida', None),
+            horario_retorno=getattr(self, 'horario_retorno', None),
+            quantidade_passageiros=getattr(self, 'quantidade_passageiros', None),
             reserva_id=self.id
         )
         if erros:
