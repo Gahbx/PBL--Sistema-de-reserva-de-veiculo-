@@ -149,4 +149,13 @@ class Command(BaseCommand):
                 reservas_criadas += 1
 
         self.stdout.write(self.style.SUCCESS(f"Reservas de teste do COSEG cadastradas com sucesso ({reservas_criadas} novas)!"))
+
+        # Criação do Superusuário administrador para acesso ao painel de login (/admin/)
+        from django.contrib.auth.models import User
+        if not User.objects.filter(username="admin").exists():
+            User.objects.create_superuser("admin", "admin@coseg.com", "admin123")
+            self.stdout.write(self.style.SUCCESS("Usuário administrador criado: Usuário: 'admin' | Senha: 'admin123' (Acesse em /admin/)"))
+        else:
+            self.stdout.write(self.style.NOTICE("Usuário administrador 'admin' já cadastrado."))
+
         self.stdout.write(self.style.SUCCESS("Banco de dados pronto para testes e simulações do PBL 1!"))
