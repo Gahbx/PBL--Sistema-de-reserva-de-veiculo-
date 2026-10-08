@@ -15,7 +15,8 @@ Sistema back-end em **Python / Django** para gerenciamento centralizado e persis
 2. **Consistência de Horários:** O horário de retorno deve ser estritamente posterior ao horário de saída.
 3. **Bloqueio de Data no Passado:** Impede agendamentos em datas retroativas.
 4. **Algoritmo Anticonflito (Sobreposição de Horários):** Impede reservas conflitantes para o mesmo veículo na mesma data através da regra:
-   $$\text{Conflito} \iff (\text{saída}_{\text{nova}} < \text{retorno}_{\text{existente}}) \land (\text{retorno}_{\text{nova}} > \text{saída}_{\text{existente}})$$
+   $$\text{Conflito} \iff (\text{saída}_{\text{nova}} \le \text{retorno}_{\text{existente}}) \land (\text{retorno}_{\text{nova}} \ge \text{saída}_{\text{existente}})$$
+   *(Inclui coincidência de horários de retorno e saída: um carro retornando às 14h não pode ser reservado para sair às 14h).*
 
 ### 🗄️ Modelagem Limpa no SQLite (`db.sqlite3`)
 O banco contém exclusivamente as entidades do domínio da aplicação:

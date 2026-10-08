@@ -21,18 +21,18 @@ def verificar_sobreposicao_horarios(
     """
     Determina se dois intervalos de tempo se sobrepõem no mesmo dia.
     
-    Fórmula de Interseção de Intervalos:
-    Dois intervalos [saida_a, retorno_a] e [saida_b, retorno_b] se sobrepõem se,
-    e somente se:
-        saida_a < retorno_b  E  retorno_a > saida_b
+    Fórmula de Interseção de Intervalos com Coincidência de Retorno:
+    Dois intervalos [saida_a, retorno_a] e [saida_b, retorno_b] se sobrepõem se:
+        saida_a <= retorno_b  E  retorno_a >= saida_b
         
-    Exemplos do documento do PBL:
-    - Reserva existente: 08:00 às 10:00
-    - Nova solicitação:  09:00 às 11:00 -> Retorna TRUE (CONFLITO!)
-    - Nova solicitação:  10:30 às 12:00 -> Retorna FALSE (SEM CONFLITO!)
-    - Nova solicitação:  10:00 às 12:00 -> Retorna FALSE (SEM CONFLITO - saída no momento do término)
+    Conforme o documento do PBL:
+    - Um veículo previsto para retornar às 14h NÃO pode ser reservado para outra
+      atividade às 14h (coincidência de retorno com saída = conflito de utilização).
+    - Reserva existente: 08:00 às 10:00 e Nova: 09:00 às 11:00 -> TRUE (CONFLITO!)
+    - Reserva existente: 13:00 às 14:00 e Nova: 14:00 às 15:00 -> TRUE (CONFLITO!)
+    - Reserva existente: 08:00 às 10:00 e Nova: 10:30 às 12:00 -> FALSE (SEM CONFLITO!)
     """
-    return (saida_a < retorno_b) and (retorno_a > saida_b)
+    return (saida_a <= retorno_b) and (retorno_a >= saida_b)
 
 
 def buscar_reservas_conflitantes(

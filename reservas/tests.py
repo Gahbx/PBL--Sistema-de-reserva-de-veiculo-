@@ -182,11 +182,14 @@ class TestDetecaoConflitoHorarios(TestCase):
         # Sem sobreposição: 10h30 às 12h (começa após o término)
         self.assertFalse(verificar_sobreposicao_horarios(time(10, 30), time(12, 0), time(8, 0), time(10, 0)))
 
-        # Sem sobreposição: 10h00 às 12h00 (saída coincide com o retorno da anterior)
-        self.assertFalse(verificar_sobreposicao_horarios(time(10, 0), time(12, 0), time(8, 0), time(10, 0)))
+        # Conflito por sobreposição de borda: veículo retorna às 10h e nova reserva tenta sair às 10h
+        self.assertTrue(verificar_sobreposicao_horarios(time(10, 0), time(12, 0), time(8, 0), time(10, 0)))
 
-        # Sem sobreposição: 06h00 às 08h00 (retorno coincide com a saída da seguinte)
-        self.assertFalse(verificar_sobreposicao_horarios(time(6, 0), time(8, 0), time(8, 0), time(10, 0)))
+        # Conflito por sobreposição de borda: veículo anterior retorna às 08h e reserva sai às 08h
+        self.assertTrue(verificar_sobreposicao_horarios(time(6, 0), time(8, 0), time(8, 0), time(10, 0)))
+
+        # Cenário real: 13h às 14h e 14h às 15h para o mesmo veículo
+        self.assertTrue(verificar_sobreposicao_horarios(time(14, 0), time(15, 0), time(13, 0), time(14, 0)))
 
     def test_cenario_conflito_do_documento_pbl(self):
         """
