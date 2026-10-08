@@ -71,3 +71,16 @@ class ReservaAdmin(admin.ModelAdmin):
     search_fields = ('solicitante', 'setor', 'atividade', 'origem', 'destino')
     date_hierarchy = 'data'
     ordering = ('-data', 'horario_saida')
+
+
+# Customização do Painel Administrativo para o COSEG
+admin.site.site_header = "COSEG Mobilidade — Gestão de Frota (Porto do Itaqui)"
+admin.site.site_title = "COSEG Mobilidade"
+admin.site.index_title = "Administração da Frota e Reservas de Veículos"
+
+# Oculta 'Grupos' para manter o painel limpo e focado no domínio do sistema
+from django.contrib.auth.models import Group
+try:
+    admin.site.unregister(Group)
+except admin.sites.NotRegistered:
+    pass

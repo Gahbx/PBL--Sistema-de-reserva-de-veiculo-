@@ -1,243 +1,190 @@
-# 🚗 COSEG Mobilidade — Sistema de Reserva de Veículos (Porto do Itaqui)
+# 🚗 COSEG Mobilidade — Sistema de Reserva de Veículos
 
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
-[![Django](https://img.shields.io/badge/Django-5.0%2B-green.svg)](https://www.djangoproject.com/)
-[![SQLite](https://img.shields.io/badge/Banco-SQLite-lightgrey.svg)](https://www.sqlite.org/)
-[![Status](https://img.shields.io/badge/Status-100%25%20Funcional-brightgreen.svg)]()
-[![Testes](https://img.shields.io/badge/Testes-18%20Aprovados-success.svg)]()
-
-> **Projeto Acadêmico:** Metodologia Ativa PBL 1 (Problema 1: *Agenda em Conflito*)  
-> **Instituição:** UNDB — Centro Universitário  
-> **Curso:** Engenharia de Software / Ciência da Computação (5º Período — 2026.2)  
-> **Disciplina:** Programação para Web | **Docente:** Prof. Me. Danilo Costa  
-> **Escopo da Etapa 01 e 02:** Camada de Servidor (Back-end puro em Python/Django com banco relacional e API JSON).
+Sistema back-end em **Python / Django** para gerenciamento centralizado e persistente da frota corporativa do setor **COSEG (Porto do Itaqui)**. Desenvolvido para eliminar conflitos de horários, incompatibilidades de capacidade e pedidos descentralizados.
 
 ---
 
-## 📖 1. Sobre o Projeto
+## 📌 1. Pontos Principais do Sistema
 
-O setor **COSEG** (Coordenação de Segurança e Serviços Gerais) do **Porto do Itaqui** gerencia uma frota corporativa compartilhada de **10 veículos** (8 leves e 2 coletivos). Devido a processos manuais, registros dispersos em planilhas e comunicação via telefone/WhatsApp, a empresa enfrentava conflitos críticos de agenda, falhas de dimensionamento de capacidade e desorientação de motoristas.
+### 🚘 Frota Oficial (10 Veículos)
+- **8 Veículos Leves (`VL-01` a `VL-08`):** Capacidade para até **4 passageiros**.
+- **2 Veículos Coletivos (`VC-01` e `VC-02`):** Capacidade para até **18 passageiros**.
 
-Esta solução implementa a **Camada de Servidor (Back-end)** completa da aplicação, centralizando as regras de negócio e atuando como a fonte única da verdade para consultas e persistência de dados.
+### 🛡️ Regras de Negócio Centrais
+1. **Capacidade do Veículo:** Bloqueia qualquer solicitação acima de 18 passageiros ou que exceda a lotação do veículo escolhido (ex: 7 pessoas em veículo de 4 lugares).
+2. **Consistência de Horários:** O horário de retorno deve ser estritamente posterior ao horário de saída.
+3. **Bloqueio de Data no Passado:** Impede agendamentos em datas retroativas.
+4. **Algoritmo Anticonflito (Sobreposição de Horários):** Impede reservas conflitantes para o mesmo veículo na mesma data através da regra:
+   $$\text{Conflito} \iff (\text{saída}_{\text{nova}} < \text{retorno}_{\text{existente}}) \land (\text{retorno}_{\text{nova}} > \text{saída}_{\text{existente}})$$
 
-### 🛡️ Regras de Negócio Implementadas no Servidor:
-1. **Capacidade por Categoria:**
-   - Veículos Leves (`VL-01` a `VL-08`): capacidade de até **4 passageiros**.
-   - Veículos Coletivos (`VC-01` e `VC-02`): capacidade de até **18 passageiros**.
-   - Rejeição obrigatória para qualquer solicitação com **mais de 18 passageiros**.
-   - Rejeição quando a quantidade solicitada exceder a lotação do veículo escolhido (ex: 7 pessoas em veículo de 4 lugares).
-2. **Consistência de Horários:**
-   - O horário de retorno deve ser **estritamente posterior** ao horário de saída.
-3. **Validação de Data:**
-   - Bloqueio de reservas agendadas em datas no passado.
-4. **Algoritmo Anticonflito (Sobreposição de Horários):**
-   - Aplica a fórmula matemática de interseção temporal para o mesmo veículo na mesma data:
-     $$\text{Sobreposição} \iff (\text{saida}_{\text{nova}} < \text{retorno}_{\text{existente}}) \land (\text{retorno}_{\text{nova}} > \text{saida}_{\text{existente}})$$
-5. **Persistência Relacional:**
-   - Mapeamento objeto-relacional (Django ORM) no banco SQLite com operações completas de CRUD.
+### 🗄️ Modelagem Limpa no SQLite (`db.sqlite3`)
+O banco contém exclusivamente as entidades do domínio da aplicação:
+- **`Veiculo` (`reservas_veiculo`):** `codigo`, `modelo`, `placa`, `categoria`, `capacidade`, `ativo`.
+- **`Reserva` (`reservas_reserva`):** `solicitante`, `setor`, `atividade`, `origem`, `destino`, `data`, `horario_saida`, `horario_retorno`, `quantidade_passageiros`, `veiculo` (chave estrangeira), `observacoes`, `status`, `criado_em`, `atualizado_em`.
 
----
-
-## 💻 2. Requisitos de Ambiente (O que você precisa ter)
-
-Antes de começar, verifique se possui instalado em sua máquina:
-
-- **Python** (versão 3.10 ou superior recomendada):
-  - [Download do Python](https://www.python.org/downloads/)
-  - *No Windows, certifique-se de marcar a opção "Add Python to PATH" durante a instalação.*
-- **Git** (para controle de versão):
-  - [Download do Git](https://git-scm.com/downloads)
-- **Gerenciador de Pacotes pip** (já vem instalado com o Python).
+### 📡 Rotas da API JSON
+| Método | Endpoint | Descrição |
+| :---: | :--- | :--- |
+| `GET` | `/` | Apresentação do sistema e catálogo de rotas |
+| `GET` | `/veiculos/` | Lista toda a frota e capacidades |
+| `POST` | `/veiculos/` | Cadastra novo veículo |
+| `GET` | `/veiculos/<codigo>/` | Detalhes de um veículo específico |
+| `GET` | `/reservas/` | Lista reservas (filtros: `?data=`, `?veiculo=`, `?status=`) |
+| `POST` | `/reservas/` | Registra nova reserva (aplica todas as validações) |
+| `GET` | `/reservas/<id>/` | Detalhes de uma reserva específica |
+| `PUT` | `/reservas/<id>/` | Atualiza reserva existente (revalida regras) |
+| `DELETE` | `/reservas/<id>/` | Cancela (`status=CANCELADA`) uma reserva |
+| `POST` | `/reservas/verificar-conflito/` | Simula disponibilidade de horário sem persistir |
 
 ---
 
-## 🚀 3. Guia de Instalação e Execução Passo a Passo
+## 🚀 2. Códigos para Iniciar o Sistema
 
-Abra o seu terminal (Prompt de Comando, PowerShell ou Terminal do VS Code) e siga as etapas abaixo:
+Abra o terminal na pasta do projeto e execute:
 
-### Passo 1: Obter o projeto
-Se você clonou via Git:
 ```bash
-git clone <URL_DO_REPOSITORIO>
-cd "Reserva de veiculo"
-```
-Ou simplesmente navegue até a pasta onde o projeto está salvo:
-```bash
-cd "c:\Users\gabri\OneDrive\Desktop\Reserva de veiculo"
-```
-
----
-
-### Passo 2: Criar e Ativar um Ambiente Virtual (Recomendado)
-O ambiente virtual isola as bibliotecas do projeto:
-
-* **No Windows (PowerShell):**
-```powershell
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-```
-*(Se houver erro de política de execução no PowerShell, execute `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned`)*
-
-* **No Windows (CMD / Prompt de Comando):**
-```cmd
-python -m venv venv
-venv\Scripts\activate.bat
-```
-
-* **No Linux / macOS:**
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
-
----
-
-### Passo 3: Instalar as Dependências do Projeto
-Com o ambiente ativado, instale as bibliotecas requeridas:
-```bash
+# 1. Instalar as dependências
 pip install -r requirements.txt
-```
 
----
-
-### Passo 4: Aplicar as Migrações do Banco de Dados
-Gera e configura o banco relacional SQLite local (`db.sqlite3`):
-```bash
+# 2. Criar as tabelas no banco SQLite
 python manage.py migrate
-```
 
----
-
-### Passo 5: Popular a Frota e os Dados Oficiais de Teste do PBL
-Executa o comando automatizado que cadastra a frota de 10 veículos e as 4 reservas fornecidas pelo COSEG no documento do PBL:
-```bash
+# 3. Popular a frota oficial (10 veículos) e as 4 reservas de teste do COSEG
 python manage.py popular_banco
-```
-*Saída esperada:*
-```text
-===> Inicializando cadastro da frota oficial do COSEG...
-Frota cadastrada com sucesso (10 veículos no total)!
-Reservas de teste do COSEG cadastradas com sucesso (4 novas)!
-Banco de dados pronto para testes e simulações do PBL 1!
-```
 
----
+# 4. Rodar a suíte de testes automatizados (18 testes)
+python manage.py test
 
-### Passo 6: Executar a Suíte de Testes Automatizados (Evidência Formal)
-Para comprovar que todas as regras de negócio e validações de conflito estão funcionando com 100% de precisão:
-```bash
-python manage.py test -v 2
-```
-*Resultado:* **18 testes executados e aprovados** com sucesso (`OK`).
-
----
-
-### Passo 7: Iniciar o Servidor de Desenvolvimento
-Inicie a aplicação localmente:
-```bash
+# 5. Iniciar o servidor local
 python manage.py runserver
 ```
-O servidor estará disponível no endereço:
-👉 **`http://127.0.0.1:8000/`**
+
+> **Acesso ao Servidor:**
+> - 🛠️ **Interface Web Administrativa:** `http://127.0.0.1:8000/admin/`  
+>   - **Usuário:** `admin` | **Senha:** `admin123`
+> - 🌐 **API REST (JSON):** `http://127.0.0.1:8000/`
 
 ---
 
-## 🔀 4. Versionamento com Git (Guia de Comandos)
+## 🧪 3. Guia Prático de Testes na Interface Web (`runserver`)
 
-Para versionar este projeto e sincronizá-lo com um repositório remoto (como GitHub ou GitLab), utilize o fluxo padrão:
+Com o servidor rodando (`python manage.py runserver`), abra seu navegador em:  
+👉 **`http://127.0.0.1:8000/admin/`**  
+*(Faça login com usuário: `admin` e senha: `admin123`)*
 
-### 1. Inicializar o repositório local:
-```bash
-git init
-```
-
-### 2. Verificar arquivos modificados:
-```bash
-git status
-```
-
-### 3. Adicionar arquivos ao controle de versão:
-```bash
-git add .
-```
-
-### 4. Criar o commit com mensagem semântica:
-```bash
-git commit -m "feat: implementacao completa da camada de servidor em django para o pbl 1"
-```
-
-### 5. Configurar a branch principal e conectar ao repositório remoto:
-```bash
-git branch -M main
-git remote add origin https://github.com/Gahbx/PBL--Sistema-de-reserva-de-veiculo-.git
-git push -u origin main
-```
-
-### Boas Práticas de Mensagens de Commit Utilizadas:
-- `feat:` Inclusão de nova funcionalidade ou endpoint.
-- `fix:` Correção de regras de validação ou bugs.
-- `docs:` Criação ou atualização de documentações e Board de tutoria.
-- `test:` Inclusão ou modificação da bateria de testes automatizados.
-- `refactor:` Melhoria de código sem alterar o comportamento externo.
+Abaixo estão os testes práticos passo a passo para demonstrar na interface todas as regras exigidas no documento do PBL:
 
 ---
 
-## 📡 5. Catálogo de Rotas e Endpoints da API JSON
-
-A Camada de Servidor responde em formato `JSON` com status HTTP padronizados (`200 OK`, `201 Created`, `400 Bad Request`, `404 Not Found`).
-
-| Método | Endpoint | Função / Descrição |
-| :---: | :--- | :--- |
-| `GET` | `/` | Apresentação do servidor e catálogo de rotas disponíveis |
-| `GET` | `/veiculos/` | Lista a frota cadastrada, capacidades e status de atividade |
-| `POST` | `/veiculos/` | Cadastra um novo veículo na frota |
-| `GET` | `/veiculos/<codigo>/` | Detalhes de um veículo específico e histórico de viagens |
-| `GET` | `/reservas/` | Lista reservas registradas (filtros por `?data=`, `?veiculo=`, `?status=`) |
-| `POST` | `/reservas/` | Registra uma nova reserva aplicando todas as validações |
-| `GET` | `/reservas/<id>/` | Consulta detalhes completos de uma reserva específica |
-| `PUT` | `/reservas/<id>/` | Atualiza uma reserva existente (revalidando conflitos) |
-| `DELETE` | `/reservas/<id>/` | Cancela (`status=CANCELADA`) ou remove uma reserva |
-| `POST` | `/reservas/verificar-conflito/` | Endpoint prévio para simular e checar disponibilidade de horário |
-
-### Exemplo de Teste no Terminal (PowerShell):
-```powershell
-# Consultar catálogo inicial
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/" -Method GET
-
-# Listar frota de veículos
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/veiculos/" -Method GET
-
-# Simular conflito em tempo real
-$body = @{
-    veiculo = "VL-01"
-    data = "2026-08-18"
-    horario_saida = "09:00"
-    horario_retorno = "11:00"
-} | ConvertTo-Json
-
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/reservas/verificar-conflito/" -Method POST -Body $body -ContentType "application/json"
-```
+### 🔹 Teste 1: Cadastrar um Novo Veículo na Frota
+1. Na tela inicial do painel, clique em **`+ Adicionar`** ao lado de **Veículos**.
+2. Preencha os dados do novo carro:
+   - **Código do Veículo:** `VL-09`
+   - **Modelo / Descrição:** `Honda City 1.5 Sedan`
+   - **Placa do Veículo:** `ROO-1009`
+   - **Categoria:** `Veículo Leve (Até 4 passageiros)`
+   - **Capacidade de Passageiros:** `4`
+   - **Ativo na Frota:** `Marcado (Sim)`
+3. Clique em **SALVAR**.
+> **Resultado na tela:** O veículo é cadastrado com sucesso e passa a figurar na listagem da frota oficial disponível para novos agendamentos.
 
 ---
 
-## 📂 6. Estrutura de Pastas e Documentação
-
-Para consultar detalhes aprofundados sobre a arquitetura do projeto e o processo de aprendizagem, explore a pasta [`documentacao/`](./documentacao/):
-
-- 📄 [01_VISAO_GERAL_E_COMO_EXECUTAR.md](./documentacao/01_VISAO_GERAL_E_COMO_EXECUTAR.md): Introdução técnica e passo a passo operacional.
-- 📄 [02_ESTRUTURA_DAS_PASTAS_E_ARQUIVOS.md](./documentacao/02_ESTRUTURA_DAS_PASTAS_E_ARQUIVOS.md): Explicação didática de cada pasta raiz e de cada arquivo.
-- 📄 [03_REGRAS_DE_NEGOCIO_E_LOGICA_DO_PROBLEMA.md](./documentacao/03_REGRAS_DE_NEGOCIO_E_LOGICA_DO_PROBLEMA.md): Lógica matemática de sobreposição e regras do COSEG.
-- 📄 [04_GUIA_DAS_ROTAS_E_API_JSON.md](./documentacao/04_GUIA_DAS_ROTAS_E_API_JSON.md): Guia de integração da API RESTful para o PBL 2.
-- 📄 [05_EVIDENCIAS_DOS_TESTES_E_AVALIACAO.md](./documentacao/05_EVIDENCIAS_DOS_TESTES_E_AVALIACAO.md): Matriz de evidências e resultados dos 18 testes automatizados.
-- 📄 [06_BOARD_PBL_PREENCHIDO.md](./documentacao/06_BOARD_PBL_PREENCHIDO.md): Resolução completa das 8 etapas do Board de Tutoria da Metodologia PBL.
-
-Além disso, o arquivo do **Board em PowerPoint** preenchido está disponível em:
-- 📊 [`Fontes/Board_PBL_Problema_1_reserva_veiculos.pptx`](./Fontes/Board_PBL_Problema_1_reserva_veiculos.pptx)
+### 🔹 Teste 2: Criar uma Nova Reserva / Manifestação de Uso (Sucesso)
+1. No painel, clique em **`+ Adicionar`** ao lado de **Reservas de Veículos**.
+2. Preencha a manifestação formal da viagem com todos os campos de controle:
+   - **Identificação do Solicitante:** `Fernanda Costa - Engenharia`
+   - **Setor do Porto:** `Operações / Manutenção`
+   - **Finalidade / Atividade:** `Vistoria no Cais Sul`
+   - **Local de Origem:** `Portaria Principal`
+   - **Local de Destino:** `Berço 103`
+   - **Data da Reserva:** Coloque uma data futura (ex: `15/10/2026`)
+   - **Horário de Saída:** `08:30`
+   - **Horário de Retorno:** `11:30`
+   - **Quantidade de Passageiros:** `3`
+   - **Veículo Solicitado:** Selecione `VL-04 - Volkswagen Virtus`
+3. Clique em **SALVAR**.
+> **Resultado na tela:** Uma tarja verde de sucesso confirma o agendamento, garantindo que o carro foi reservado para o trajeto e horários definidos.
 
 ---
 
-## 👥 Autoria e Agradecimentos
+### 🔹 Teste 3: Bloqueio por Conflito e Sobreposição de Horários (Cenário Real do PBL)
+**Regra do Documento:** O veículo `VL-01` já possui reserva no dia `18/08/2026` das `08:00` às `10:00` (Carlos Mendes). Outra equipe tenta agendar o mesmo carro das `09:00` às `11:00`.
+1. Clique em **`+ Adicionar`** em **Reservas de Veículos**.
+2. Preencha uma nova solicitação conflitante:
+   - **Solicitante:** `Equipe de Logística` | **Setor:** `Operações`
+   - **Atividade:** `Reunião Externa` | **Origem:** `Porto` | **Destino:** `Distrito Industrial`
+   - **Data da Reserva:** `18/08/2026`
+   - **Horário de Saída:** `09:00`
+   - **Horário de Retorno:** `11:00`
+   - **Quantidade de Passageiros:** `2`
+   - **Veículo Solicitado:** Selecione `VL-01 - Fiat Cronos 1.3`
+3. Clique em **SALVAR**.
+> **Resultado na tela:** A interface **bloqueia o salvamento** e exibe um alerta vermelho em destaque:  
+> ⚠️ *"Conflito de agenda: o veículo VL-01 já possui a Reserva #1 confirmada para 18/08/2026 das 08:00 às 10:00 (solicitante: Carlos Mendes - Coord. Financeira)."*
 
-- **Instituição:** UNDB — Centro Universitário
-- **Disciplina:** Programação para Web (PBL 1)
-- **Docente Orientador:** Prof. Me. Danilo Costa
+---
+
+### 🔹 Teste 4: Liberação de Uso em Horário Posterior (Sem Conflito — Caso do PBL)
+**Regra do Documento:** O veículo `VL-01` conclui sua viagem anterior às `10:00`. Uma solicitação para as `10:30` às `12:00` na mesma data deve ser aceita normalmente.
+1. No mesmo formulário de reserva para o veículo `VL-01` em `18/08/2026`:
+   - Altere o **Horário de Saída** para `10:30`
+   - Altere o **Horário de Retorno** para `12:00`
+2. Clique em **SALVAR**.
+> **Resultado na tela:** O sistema valida que o veículo já terá retornado e **salva a reserva com sucesso**!
+
+---
+
+### 🔹 Teste 5: Rejeição por Lotação Excedida (Caso Real do PBL: 7 pessoas em carro de 4 lugares)
+**Narrativa do Documento:** Uma equipe tenta embarcar 7 passageiros em um carro leve de apenas 4 lugares.
+1. Clique em **`+ Adicionar`** em **Reservas de Veículos**.
+2. Preencha os campos básicos e selecione o veículo `VL-02` (Categoria Leve - 4 lugares).
+3. No campo **Quantidade de Passageiros**, digite: `7`.
+4. Clique em **SALVAR**.
+> **Resultado na tela:** A interface barra o pedido com a mensagem em vermelho:  
+> ⚠️ *"O veículo selecionado (VL-02 - Chevrolet Onix Plus) comporta até 4 passageiros, mas foram solicitadas 7 vagas."*
+
+---
+
+### 🔹 Teste 6: Rejeição por Limite Global Máximo do Sistema (> 18 Passageiros)
+**Regra do Documento:** Nenhuma viagem pode ultrapassar o teto máximo de 18 passageiros do COSEG.
+1. Clique em **`+ Adicionar`** em **Reservas de Veículos**.
+2. Selecione o veículo coletivo `VC-01 - Mercedes-Benz Sprinter`.
+3. No campo **Quantidade de Passageiros**, digite: `22`.
+4. Clique em **SALVAR**.
+> **Resultado na tela:** A interface bloqueia:  
+> ⚠️ *"Capacidade máxima do sistema COSEG excedida (22 pessoas). O sistema comporta no máximo 18 passageiros por viagem."*
+
+---
+
+### 🔹 Teste 7: Rejeição por Horário Inconsistente (Retorno Anterior à Saída)
+1. Tente cadastrar uma reserva com:
+   - **Horário de Saída:** `15:00`
+   - **Horário de Retorno:** `14:00` (ou `15:00`)
+2. Clique em **SALVAR**.
+> **Resultado na tela:**  
+> ⚠️ *"Horário inválido: o retorno (14:00) deve ser estritamente posterior ao horário de saída (15:00)."*
+
+---
+
+### 🔹 Teste 8: Rejeição por Data no Passado
+1. Tente cadastrar uma reserva com data anterior à de hoje (ex: `10/01/2020`).
+2. Clique em **SALVAR**.
+> **Resultado na tela:**  
+> ⚠️ *"A data da reserva não pode estar no passado."*
+
+---
+
+### 🔹 Teste 9: Modificar Dados e Cancelar Reserva no Sistema
+1. Na lista de **Reservas de Veículos**, clique em qualquer reserva existente para editá-la.
+2. Altere informações (ex: mude a atividade ou o destino).
+3. Para **Cancelar a Viagem**: altere o campo **Status da Reserva** para `Cancelada` e clique em **Salvar**.
+> **Resultado na tela:** O status muda para cancelada e o veículo fica imediatamente liberado para atender outras demandas naquele horário.
+
+---
+
+### 🌐 Consultas Diretas no Navegador (API JSON)
+Com o `runserver` ligado, você também pode abrir as seguintes URLs diretamente na barra do seu navegador para conferir as respostas em JSON puro:
+- 📄 `http://127.0.0.1:8000/` — Catálogo e status do servidor.
+- 🚗 `http://127.0.0.1:8000/veiculos/` — Listagem da frota oficial e capacidades.
+- 📅 `http://127.0.0.1:8000/reservas/` — Reservas confirmadas registradas no banco.
